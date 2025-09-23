@@ -2,7 +2,7 @@ name: SethsBlogBot
 
 on:
   schedule:
-    - cron: "0 9 * * *"   # هر روز ساعت 09:00 UTC (حدود 12:30 ظهر ایران)
+    - cron: "0 12 * * *"   # هر روز ساعت 09:00 UTC (حدود 12:30 ظهر ایران)
   workflow_dispatch:      # امکان اجرای دستی هم داشته باشه
 
 jobs:
