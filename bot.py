@@ -46,6 +46,15 @@ def send_latest_post():
     # ترجمه فارسی
     summary_fa = translator.translate(summary, src="en", dest="fa").text
 
+    translation = translator.translate(summary, src='en', dest='fa')
+
+# پاکسازی ترجمه فارسی
+fa_summary = re.sub(r'\d+', '', translation.text)   # حذف اعداد
+fa_summary = re.sub(r'http\S+', '', fa_summary)     # حذف لینک
+fa_summary = fa_summary.replace("amp;", "").strip()
+
+message = f"📝 {title}\n\n{summary}\n\n{fa_summary}\n\n🔗 {link}"
+
     # پیام نهایی
     message = f"📌 {title}\n\n🇬🇧 {summary}\n\n🇮🇷 {summary_fa}\n\n🔗 منبع: {link}"
 
