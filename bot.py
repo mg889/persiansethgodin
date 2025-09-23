@@ -4,8 +4,8 @@ from googletrans import Translator
 from telegram import Bot
 
 # --- گرفتن مقادیر از GitHub Secrets ---
-TOKEN = os.getenv("BOT_TOKEN")
-CHANNEL_ID = os.getenv("CHANNEL_ID")
+TOKEN = os.getenv("8303511391:AAEK0L-tACj28O1b-3efgytkOLBAweL1G7Y")
+CHANNEL_ID = os.getenv("@persiansethgodin")
 
 bot = Bot(token=TOKEN)
 translator = Translator()
