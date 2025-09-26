@@ -1,67 +1,119 @@
 import os
 import re
+import time
+import html
 import feedparser
 from bs4 import BeautifulSoup
 from telegram import Bot
-from transformers import MarianMTModel, MarianTokenizer
-import torch
-import logging
+from googletrans import Translator
 
-import os
-from huggingface_hub import login
-
-if "HF_TOKEN" in os.environ:
-    login(token=os.environ["HF_TOKEN"])
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# ---------- تنظیمات ----------
-TOKEN = os.getenv("BOT_TOKEN")       # از GitHub Secrets خوانده میشه
-CHANNEL_ID = os.getenv("CHANNEL_ID") # مثلا "@persiansethgodin"
+# --- تنظیمات از Secrets ---
+TOKEN = os.getenv("BOT_TOKEN")        # توکن از BotFather
+CHANNEL_ID = os.getenv("CHANNEL_ID")  # مثلا "@persiansethgodin"
 LAST_FILE = "last_post.txt"
-MODEL_NAME = "Helsinki-NLP/opus-mt-en-fa"  # مدل ترجمه en->fa
 
-# ---------- آماده‌سازی تلگرام ----------
 bot = Bot(token=TOKEN)
+translator = Translator()
 
-# ---------- تابع پاکسازی متن (حذف HTML، URL، کدهای غلط و اعداد) ----------
-def clean_text(html_text):
-    # حذف تگ‌ها و entity های HTML
-    soup = BeautifulSoup(html_text or "", "html.parser")
-    text = soup.get_text(separator=" ")
+# --- تمیزکاری متن: حذف HTML/URL/اعداد/فاصله‌های اضافی ---
+def clean_text(raw_html: str) -> str:
+    if not raw_html:
+        return ""
+    # تبدیل entity ها مثل &amp; و &#8217; به کاراکتر معمولی
+    text = html.unescape(raw_html)
 
-    # حذف کدهای numeric entity مثل &#8217;
-    text = re.sub(r'&#\d+;', ' ', text)
+    # حذف تگ‌های HTML
+    text = BeautifulSoup(text, "html.parser").get_text(separator=" ")
+
+    # حذف باقی‌مانده‌ی entityهای عددی (احتیاطی)
+    text = re.sub(r'&#\d+;?', ' ', text)
 
     # حذف لینک‌ها
     text = re.sub(r'http\S+', ' ', text)
 
-    # حذف کاراکترهای خاص و amp;
-    text = text.replace("amp;", " ")
-    text = re.sub(r'&[a-zA-Z]+;', ' ', text)
+    # حذف کلمات اضافی HTML مانند amp; / nbsp;
+    text = re.sub(r'\b(?:amp|nbsp);?\b', ' ', text, flags=re.I)
 
-    # حذف اعداد (اگه می‌خوای همه اعداد حذف نشن، خط زیر رو تغییر بده)
+    # حذف تمام اعداد (اگر نمی‌خوای همه اعداد حذف شن، این خط رو بردار)
     text = re.sub(r'\d+', ' ', text)
 
     # نرمال‌سازی فاصله‌ها
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-# ---------- بارگذاری مدل ترجمه (یک‌بار در شروع) ----------
-def load_translation_model(model_name=MODEL_NAME):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info(f"Loading tokenizer & model ({model_name}) on {device} ...")
-    tokenizer = MarianTokenizer.from_pretrained(model_name)
-    model = MarianMTModel.from_pretrained(model_name).to(device)
-    logger.info("Model loaded.")
-    return tokenizer, model, device
+# --- ترجمه با تلاش مجدد (برای پایداری بیشتر) ---
+def translate_fa(en_text: str) -> str:
+    if not en_text:
+        return ""
+    for i in range(3):  # تا 3 بار تلاش
+        try:
+            fa = translator.translate(en_text, src="en", dest="fa").text
+            fa = re.sub(r'\s+', ' ', fa).strip()
+            if fa:
+                return fa
+        except Exception as e:
+            print(f"[warn] translate attempt {i+1} failed: {e}")
+            time.sleep(2 + i)  # مکث کوتاه و دوباره امتحان
+    return ""  # اگر ترجمه نشد، خالی برمی‌گردونیم
 
-tokenizer, model, device = load_translation_model()
+def get_last_post_id() -> str | None:
+    try:
+        with open(LAST_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return None
 
-# ---------- ترجمه متن با تقسیم به تکه‌ها برای جلوگیری از برش ناخواسته ----------
-def translate_text(text):
-    if not text:
+def save_last_post_id(pid: str):
+    with open(LAST_FILE, "w", encoding="utf-8") as f:
+        f.write(pid or "")
+
+# تقسیم و ارسال پیام‌های بلند (محدودیت تلگرام ~4096 کاراکتر)
+def send_long_message(text: str):
+    max_len = 4000
+    for i in range(0, len(text), max_len):
+        bot.send_message(chat_id=CHANNEL_ID, text=text[i:i + max_len])
+
+def main():
+    feed_url = "https://seths.blog/feed"
+    feed = feedparser.parse(feed_url)
+    if not feed.entries:
+        print("[info] no entries in feed.")
+        return
+
+    entry = feed.entries[0]
+    title = entry.get("title", "(بدون عنوان)")
+    link = entry.get("link", "")
+
+    # برخی وقت‌ها خلاصه در summary است، گاهی در content
+    raw = entry.get("summary") or (entry.get("content", [{}])[0].get("value") if entry.get("content") else "")
+    en_clean = clean_text(raw)
+
+    # فقط اگر پست جدید است ارسال کن
+    last = get_last_post_id()
+    if last == link:
+        print("[info] no new post.")
+        return
+
+    # ترجمه
+    fa_text = translate_fa(en_clean)
+
+    # ساخت پیام
+    # برای زیبایی، انگلیسی را خیلی بلند نکنیم
+    en_preview = en_clean if len(en_clean) <= 1000 else en_clean[:1000].rstrip() + "..."
+
+    parts = [f"📌 {title}", "", f"🇬🇧 {en_preview}"]
+    if fa_text:
+        parts += ["", f"🇮🇷 {fa_text}"]
+    parts += ["", f"🔗 منبع: {link}"]
+
+    message = "\n".join(parts)
+    send_long_message(message)
+
+    save_last_post_id(link)
+    print("[ok] message sent and last_post saved.")
+
+if __name__ == "__main__":
+    main()    if not text:
         return ""
 
     # تقسیم متن به جملات (تقریباً)
