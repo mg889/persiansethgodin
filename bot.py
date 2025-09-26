@@ -7,6 +7,12 @@ from transformers import MarianMTModel, MarianTokenizer
 import torch
 import logging
 
+import os
+from huggingface_hub import login
+
+if "HF_TOKEN" in os.environ:
+    login(token=os.environ["HF_TOKEN"])
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
