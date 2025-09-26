@@ -1,6 +1,4 @@
 python-telegram-bot==13.15
 feedparser
 beautifulsoup4
-transformers
-sentencepiece
-torch
+googletrans==4.0.0-rc1
