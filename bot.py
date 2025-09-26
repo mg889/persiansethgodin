@@ -210,3 +210,6 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     send_latest_post()
+
+if __name__ == "__main__":
+    main()
