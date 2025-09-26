@@ -3,8 +3,8 @@ from googletrans import Translator
 from telegram import Bot
 
 # --- تنظیمات ---
-TOKEN = "توکن_ربات_از_BotFather"   # توکن ربات
-CHANNEL_ID = "@نام_کانال_خودت"    # مثلا: @mychannel
+TOKEN = "8303511391:AAEK0L-tACj28O1b-3efgytkOLBAweL1G7Y"   # توکن ربات
+CHANNEL_ID = "@persiansethgodin"    # مثلا: @mychannel
 
 bot = Bot(token=TOKEN)
 translator = Translator()
