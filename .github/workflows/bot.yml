@@ -2,29 +2,14 @@ name: SethsBlogBot
 
 on:
   schedule:
-    - cron: "0 12 * * *"   # هر روز ساعت 12:00 UTC (اگر می‌خواهی 11 بذاری 11 بنویس)
-  workflow_dispatch:
+    - cron: "0 12 * * *"   # هر روز ساعت 12:00 UTC
+  workflow_dispatch:        # اجرای دستی
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
-      - name: Cache HuggingFace & torch
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/huggingface
-            ~/.cache/torch
-          key: ${{ runner.os }}-hf-${{ hashFiles('**/requirements.txt') }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
