@@ -11,7 +11,7 @@ CHANNEL_ID = "@persiansethgodin"    # مثلا: @mychannel
 bot = Bot(token=TOKEN)
 translator = Translator()
 
-# --- حذف تگ‌های #1234 ---
+# --- حذف ‌ تگ‌های #1234 ---
 def remove_tags_with_numbers(text: str) -> str:
     if not text:
         return ""
