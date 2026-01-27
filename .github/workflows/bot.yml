@@ -3,7 +3,7 @@ name: SethsBlogBot
 on:
   schedule:
     - cron: "0 9 * * *"   # هر روز ساعت 09:00 UTC
-  workflow_dispatch:      # اجرا دستی هم داشته باشه
+  workflow_dispatch:      # اجرا دستی  هم داشته باشه
 
 jobs:
   run-bot:
